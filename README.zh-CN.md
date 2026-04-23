@@ -36,7 +36,7 @@
 
 1. 打开阅读菜单。
 2. 进入 `TXT Auto TOC`。
-3. 点击 `Rebuild TOC for current book`。
+3. 点击 `重建当前书籍目录`。
 4. 插件会重新扫描当前这本书，并刷新默认目录。
 
 ### 3. 清除当前书籍缓存
@@ -45,7 +45,7 @@
 
 1. 打开阅读菜单。
 2. 进入 `TXT Auto TOC`。
-3. 点击 `Clear cached TOC for current book`。
+3. 点击 `清除当前书籍缓存`。
 
 清除后，下次重新打开这本书，或者手动重建时，会重新生成目录。
 
@@ -55,7 +55,7 @@
 
 1. 打开阅读菜单。
 2. 进入 `TXT Auto TOC`。
-3. 点击 `Enable auto generation` 进行开关切换。
+3. 点击 `启用自动生成` 进行开关切换。
 
 关闭后，插件不会在打开 TXT 时自动接管目录。
 
@@ -65,16 +65,16 @@
 
 1. 打开阅读菜单。
 2. 进入 `TXT Auto TOC`。
-3. 点击 `Show notifications` 进行开关切换。
+3. 点击 `显示通知` 进行开关切换。
 
 ## 菜单说明
 
 `TXT Auto TOC` 菜单包含以下项目：
 
-- `Enable auto generation`
-- `Rebuild TOC for current book`
-- `Clear cached TOC for current book`
-- `Show notifications`
+- `启用自动生成`
+- `重建当前书籍目录`
+- `清除当前书籍缓存`
+- `显示通知`
 
 ## 工作规则
 

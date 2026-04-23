@@ -205,7 +205,7 @@ function TxtAutoToc:addToMainMenu(menu_items)
         text = self.title,
         sub_item_table = {
             {
-                text = _("Enable auto generation"),
+                text = _("启用自动生成"),
                 checked_func = function()
                     return self:isEnabled()
                 end,
@@ -214,19 +214,19 @@ function TxtAutoToc:addToMainMenu(menu_items)
                 end,
             },
             {
-                text = _("Rebuild TOC for current book"),
+                text = _("重建当前书籍目录"),
                 callback = function()
                     self:onRebuildCurrentBookToc()
                 end,
             },
             {
-                text = _("Clear cached TOC for current book"),
+                text = _("清除当前书籍缓存"),
                 callback = function()
                     self:onClearCurrentBookCache()
                 end,
             },
             {
-                text = _("Show notifications"),
+                text = _("显示通知"),
                 checked_func = function()
                     return self:shouldNotify()
                 end,

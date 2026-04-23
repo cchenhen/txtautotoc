@@ -36,9 +36,9 @@ entry.
 3. Open KOReader's default `Table of contents` entry to view the detected
    chapters.
 4. If the TOC looks wrong or the TXT file changed, open `TXT Auto TOC` in the
-   reader menu and choose `Rebuild TOC for current book`.
+   reader menu and choose `重建当前书籍目录`.
 5. If you want to remove the current cached result and force a fresh scan later,
-   choose `Clear cached TOC for current book`.
+   choose `清除当前书籍缓存`.
 
 ## Behavior
 
@@ -51,10 +51,10 @@ entry.
 
 ## Reader Menu
 
-- `Enable auto generation`
-- `Rebuild TOC for current book`
-- `Clear cached TOC for current book`
-- `Show notifications`
+- `启用自动生成`
+- `重建当前书籍目录`
+- `清除当前书籍缓存`
+- `显示通知`
 
 ## Development
 

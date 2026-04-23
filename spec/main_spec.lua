@@ -403,3 +403,52 @@ do
     helpers.assertEquals(document.getToc()[1].title, "native", "should keep the native toc when too few headings were mapped")
     os.remove(file)
 end
+
+do
+    local file = makeTempTxt("spec-main-menu.txt", "第1章\n第2章\n第3章\n")
+    local Plugin = loadPlugin({
+        file_attrs = {
+            [file] = { modification = 1700000000, size = 4096 },
+        },
+        reader_settings = {
+            readSetting = function(_, _, default) return default end,
+        },
+        parser = {
+            DETECTOR_VERSION = 1,
+            detect = function()
+                return { entries = {} }
+            end,
+        },
+        mapper = {
+            map = function()
+                return {}
+            end,
+        },
+        cache = {
+            buildSignature = function() return "sig" end,
+            load = function() return nil end,
+            store = function() end,
+            shouldActivate = function() return false end,
+            clear = function() end,
+        },
+    })
+
+    local plugin = Plugin:new({
+        ui = makeUI(makeDocSettings(), {
+            is_txt = true,
+            file = file,
+            getToc = function()
+                return {}
+            end,
+        }, false),
+    })
+
+    local menu_items = {}
+    plugin:addToMainMenu(menu_items)
+
+    helpers.assertEquals(menu_items.txt_auto_toc.sub_item_table[1].text, "启用自动生成", "should show Chinese label for auto generation")
+    helpers.assertEquals(menu_items.txt_auto_toc.sub_item_table[2].text, "重建当前书籍目录", "should show Chinese label for rebuild")
+    helpers.assertEquals(menu_items.txt_auto_toc.sub_item_table[3].text, "清除当前书籍缓存", "should show Chinese label for cache clearing")
+    helpers.assertEquals(menu_items.txt_auto_toc.sub_item_table[4].text, "显示通知", "should show Chinese label for notifications")
+    os.remove(file)
+end
