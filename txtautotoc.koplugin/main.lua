@@ -9,9 +9,14 @@ local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _ = require("gettext")
 local lfs = require("libs/libkoreader-lfs")
 
+local has_progressbar_dialog, ProgressbarDialog = pcall(require, "ui/widget/progressbardialog")
+if not has_progressbar_dialog then
+    ProgressbarDialog = nil
+end
+
 local TxtAutoToc = WidgetContainer:extend{
     name = "txtautotoc",
-    title = _("TXT Auto TOC"),
+    title = _("TXT 自动目录"),
     is_doc_only = true,
 }
 
@@ -54,6 +59,10 @@ function TxtAutoToc:getMinHits()
     return G_reader_settings:readSetting("txtautotoc_min_hits", 3)
 end
 
+function TxtAutoToc:isAutoExactEnabled()
+    return G_reader_settings:readSetting("txtautotoc_auto_exact", true) ~= false
+end
+
 function TxtAutoToc:saveStatus(status)
     self.ui.doc_settings:saveSetting("txtautotoc_last_status", status)
 end
@@ -73,7 +82,7 @@ function TxtAutoToc:buildSignature()
     local file = self.ui.document.file
     local mtime = lfs.attributes(file, "modification")
     local size = lfs.attributes(file, "size")
-    return Cache.buildSignature(file, mtime, size, Parser.DETECTOR_VERSION)
+    return Cache.buildSignature(file, mtime, size, Parser.DETECTOR_VERSION), size
 end
 
 function TxtAutoToc:removeInjectedToc()
@@ -128,7 +137,52 @@ function TxtAutoToc:shouldHandleDocument()
     return true
 end
 
-function TxtAutoToc:generateToc(signature)
+function TxtAutoToc:mapExactWithProgress(entries)
+    local exact_mapper = Mapper.mapBatched or Mapper.map
+
+    if not ProgressbarDialog then
+        self:showMessage(_("正在生成 TXT 目录，请稍候…"))
+        return exact_mapper(self.ui.document, entries)
+    end
+
+    local cancelled = false
+    local progressbar_dialog = ProgressbarDialog:new{
+        title = _("正在生成 TXT 目录…"),
+        subtitle = _("正在精确匹配章节位置"),
+        progress_max = #entries,
+        refresh_time_seconds = 0.2,
+        dismiss_text = _("是否继续生成目录？"),
+        dismiss_callback = function()
+            cancelled = true
+        end,
+    }
+    progressbar_dialog:show()
+
+    local mapped = exact_mapper(self.ui.document, entries, {
+        should_abort = function()
+            return cancelled
+        end,
+        progress_callback = function(current)
+            progressbar_dialog:reportProgress(current)
+        end,
+    })
+
+    progressbar_dialog:close()
+    return mapped
+end
+
+function TxtAutoToc:mapAuto(entries, total_lines)
+    if self:isAutoExactEnabled() and Mapper.mapBatched then
+        local mapped = Mapper.mapBatched(self.ui.document, entries)
+        if Cache.shouldActivate(mapped, self:getMinHits()) then
+            return mapped, "ready"
+        end
+    end
+
+    return Mapper.mapFast(self.ui.document, entries, total_lines), "fast"
+end
+
+function TxtAutoToc:generateToc(signature, force_rebuild)
     local text = readFile(self.ui.document.file)
     if not text then
         self:removeInjectedToc()
@@ -137,7 +191,14 @@ function TxtAutoToc:generateToc(signature)
     end
 
     local parsed = Parser.detect(text)
-    local mapped = Mapper.map(self.ui.document, parsed.entries or {})
+    local entries = parsed.entries or {}
+    local mapped
+    local status = "ready"
+    if force_rebuild then
+        mapped = self:mapExactWithProgress(entries)
+    else
+        mapped, status = self:mapAuto(entries, parsed.total_lines)
+    end
 
     if not Cache.shouldActivate(mapped, self:getMinHits()) then
         self:removeInjectedToc()
@@ -145,9 +206,9 @@ function TxtAutoToc:generateToc(signature)
         return false
     end
 
-    Cache.store(self.ui.doc_settings, signature, mapped, "ready", Parser.DETECTOR_VERSION)
+    Cache.store(self.ui.doc_settings, signature, mapped, status, Parser.DETECTOR_VERSION)
     self:injectToc(mapped)
-    self:saveStatus("ready")
+    self:saveStatus(status)
     self:refreshToc()
     return true
 end
@@ -157,7 +218,7 @@ function TxtAutoToc:processCurrentBook(force_rebuild)
         return false
     end
 
-    local signature = self:buildSignature()
+    local signature, file_size = self:buildSignature()
     if not force_rebuild then
         local cached_entries = Cache.load(self.ui.doc_settings, signature, Parser.DETECTOR_VERSION)
         if cached_entries then
@@ -168,7 +229,7 @@ function TxtAutoToc:processCurrentBook(force_rebuild)
         end
     end
 
-    return self:generateToc(signature)
+    return self:generateToc(signature, force_rebuild)
 end
 
 function TxtAutoToc:onReaderReady()
@@ -184,10 +245,10 @@ end
 function TxtAutoToc:onRebuildCurrentBookToc()
     local ok = self:processCurrentBook(true)
     if ok then
-        self:showMessage(_("TXT Auto TOC rebuilt"))
+        self:showMessage(_("TXT 自动目录已生成"))
     else
         UIManager:show(InfoMessage:new{
-            text = _("TXT Auto TOC was not activated for this book."),
+            text = _("TXT 自动目录未接管当前书籍。"),
         })
     end
 end
@@ -197,7 +258,7 @@ function TxtAutoToc:onClearCurrentBookCache()
     self:removeInjectedToc()
     self:saveStatus("cleared")
     self:refreshToc()
-    self:showMessage(_("TXT Auto TOC cache cleared"))
+    self:showMessage(_("TXT 自动目录缓存已清除"))
 end
 
 function TxtAutoToc:addToMainMenu(menu_items)
@@ -214,7 +275,16 @@ function TxtAutoToc:addToMainMenu(menu_items)
                 end,
             },
             {
-                text = _("重建当前书籍目录"),
+                text = _("打开时精确定位"),
+                checked_func = function()
+                    return self:isAutoExactEnabled()
+                end,
+                callback = function()
+                    G_reader_settings:saveSetting("txtautotoc_auto_exact", not self:isAutoExactEnabled())
+                end,
+            },
+            {
+                text = _("立即生成/重建目录"),
                 callback = function()
                     self:onRebuildCurrentBookToc()
                 end,

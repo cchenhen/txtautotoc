@@ -29,6 +29,7 @@ do
     local result = Parser.detect(sample)
 
     helpers.assertTruthy(result, "detect should return a result table")
+    helpers.assertEquals(result.total_lines, 12, "should report total normalized line count")
     helpers.assertTableLength(result.entries, 5, "should detect common Chinese headings")
     assertEntry(result.entries[1], { title = "序章", depth = 1, kind = "special", line_number = 1 })
     assertEntry(result.entries[2], { title = "第一卷 江湖夜雨", depth = 1, kind = "volume", line_number = 5 })
@@ -68,4 +69,17 @@ do
     }, "\n"))
 
     helpers.assertTableLength(result.entries, 0, "should not treat inline prose as headings")
+end
+
+do
+    local result = Parser.detect(table.concat({
+        "第7章 正常标题",
+        "正文。",
+        " ------【广告横幅】---【广告链接】第8章 被广告污染的标题",
+        "正文。",
+    }, "\n"))
+
+    helpers.assertTableLength(result.entries, 2, "should recover headings after an ad banner prefix")
+    assertEntry(result.entries[2], { title = "第8章 被广告污染的标题", depth = 1, kind = "chapter", line_number = 3 })
+    helpers.assertEquals(result.entries[2].search_term, "第8章 被广告污染的标题", "should search using the cleaned heading")
 end

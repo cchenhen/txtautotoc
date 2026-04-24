@@ -1,5 +1,5 @@
 local Parser = {
-    DETECTOR_VERSION = 1,
+    DETECTOR_VERSION = 3,
 }
 
 local SPECIAL_TITLES = {
@@ -60,6 +60,36 @@ local function makeEntry(title, depth, kind, line_number, search_term)
         line_number = line_number,
         search_term = search_term or title,
     }
+end
+
+local function startsWithKnownHeading(line)
+    local normalized = trim(line)
+
+    return normalized:match("^#")
+        or normalized:match("^第" .. NUMERIC_TOKEN .. "[卷部篇册章节回]")
+        or SPECIAL_TITLES[normalized] == true
+        or normalized:match("^附录")
+        or normalized:match("^Part%s+" .. NUMERIC_TOKEN)
+        or normalized:match("^Chapter%s+" .. NUMERIC_TOKEN)
+        or normalized == "Prologue"
+        or normalized == "Epilogue"
+        or normalized:match("^Appendix([%s:：%-].*)?$")
+end
+
+local function stripLeadingBannerPrefix(line)
+    local candidates = {
+        line:match("^[-%s_=%.、，。:：!！?？]*【.-】[-%s_=%.、，。:：!！?？]*【.-】[-%s_=%.、，。:：!！?？]*(.+)$"),
+        line:match("^[-%s_=%.、，。:：!！?？]*【.-】[-%s_=%.、，。:：!！?？]*(.+)$"),
+    }
+
+    for _, candidate in ipairs(candidates) do
+        local cleaned = candidate and trim(candidate)
+        if cleaned and startsWithKnownHeading(cleaned) then
+            return cleaned
+        end
+    end
+
+    return nil
 end
 
 local function detectMarkdownHeading(line, line_number)
@@ -124,17 +154,31 @@ local function detectEnglishHeading(line, line_number, seen_volume)
     return nil
 end
 
+local function detectNormalizedHeading(normalized, line_number, seen_volume)
+    return detectMarkdownHeading(normalized, line_number)
+        or detectChineseVolume(normalized, line_number)
+        or detectChineseChapter(normalized, line_number, seen_volume)
+        or detectChineseSpecial(normalized, line_number)
+        or detectEnglishHeading(normalized, line_number, seen_volume)
+end
+
 local function detectHeading(line, line_number, seen_volume)
     local normalized = trim(line)
     if normalized == "" then
         return nil
     end
 
-    return detectMarkdownHeading(normalized, line_number)
-        or detectChineseVolume(normalized, line_number)
-        or detectChineseChapter(normalized, line_number, seen_volume)
-        or detectChineseSpecial(normalized, line_number)
-        or detectEnglishHeading(normalized, line_number, seen_volume)
+    local entry = detectNormalizedHeading(normalized, line_number, seen_volume)
+    if entry then
+        return entry
+    end
+
+    local cleaned = stripLeadingBannerPrefix(normalized)
+    if cleaned then
+        return detectNormalizedHeading(cleaned, line_number, seen_volume)
+    end
+
+    return nil
 end
 
 local function skipFrontMatterToc(lines)
@@ -183,6 +227,7 @@ function Parser.detect(text)
     return {
         detector_version = Parser.DETECTOR_VERSION,
         entries = entries,
+        total_lines = #lines,
         normalized_text = normalized,
     }
 end

@@ -1,0 +1,14 @@
+{
+  "workspace": {
+    "library": [
+      "./txtautotoc.koplugin",
+      "./koreader",
+      "./koreader/frontend",
+      "./koreader/plugins"
+    ],
+    "ignoreDir": [
+      ".git",
+      "spec"
+    ]
+  }
+}
