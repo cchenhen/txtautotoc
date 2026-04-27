@@ -57,11 +57,13 @@ do
     Cache.store(doc_settings, signature, {
         { title = "第1章", depth = 1, xpointer = "/body/DocFragment[1]" },
     }, "ready")
+    doc_settings:saveSetting("txtautotoc_last_encoding", "gb18030")
     Cache.clear(doc_settings)
 
     helpers.assertFalsy(doc_settings.values.txtautotoc_cache, "clear should remove cached toc")
     helpers.assertFalsy(doc_settings.values.txtautotoc_cache_signature, "clear should remove signature")
     helpers.assertFalsy(doc_settings.values.txtautotoc_cache_version, "clear should remove cache version")
+    helpers.assertFalsy(doc_settings.values.txtautotoc_last_encoding, "clear should remove last reader encoding")
 end
 
 do

@@ -1,4 +1,5 @@
 local specs = {
+    "spec.reader_spec",
     "spec.parser_spec",
     "spec.cache_spec",
     "spec.mapper_spec",

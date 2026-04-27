@@ -12,6 +12,7 @@ entry.
 - Reuses per-book cached TOC data until the file changes
 - Gives priority to KOReader's handmade/custom TOC
 - Supports common Chinese headings, English `Chapter/Part`, and Markdown titles
+- Reads UTF-8 files directly and adds plugin-level GB18030/GBK compatibility
 - Adds a lightweight reader menu for exact-on-open, rebuild, cache clear, and
   notification toggles
 
@@ -44,6 +45,8 @@ entry.
 
 - Auto generation is enabled by default.
 - The plugin only handles TXT documents.
+- File reading validates UTF-8 first. If the file is not valid UTF-8, the plugin
+  tries to transcode it from GB18030/GBK to UTF-8 before chapter detection.
 - The generated TOC is reused from cache until the TXT file changes.
 - First-open auto generation uses batched exact title matching so TOC clicks can
   jump to the chapter heading xpointer instead of an estimated page.
@@ -81,3 +84,6 @@ luajit spec/run.lua
 - Auto-generated entries prefer exact title xpointers; if the plugin has to fall
   back to fast estimates, use manual rebuild or re-enable `打开时精确定位`.
 - Existing handmade TOCs always win.
+- GB18030/GBK transcoding depends on `iconv` being available in the device or
+  KOReader runtime environment. If unavailable, the plugin falls back to raw
+  file reading.

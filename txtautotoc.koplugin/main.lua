@@ -4,6 +4,7 @@ local InfoMessage = require("ui/widget/infomessage")
 local Mapper = require("txtautotoc_mapper")
 local Notification = require("ui/widget/notification")
 local Parser = require("txtautotoc_parser")
+local Reader = require("txtautotoc_reader")
 local UIManager = require("ui/uimanager")
 local WidgetContainer = require("ui/widget/container/widgetcontainer")
 local _ = require("gettext")
@@ -30,17 +31,6 @@ local function deepCopy(value)
         copied[key] = deepCopy(item)
     end
     return copied
-end
-
-local function readFile(path)
-    local handle = io.open(path, "rb")
-    if not handle then
-        return nil
-    end
-
-    local content = handle:read("*a")
-    handle:close()
-    return content
 end
 
 function TxtAutoToc:init()
@@ -183,12 +173,13 @@ function TxtAutoToc:mapAuto(entries, total_lines)
 end
 
 function TxtAutoToc:generateToc(signature, force_rebuild)
-    local text = readFile(self.ui.document.file)
+    local text, encoding = Reader.readFile(self.ui.document.file)
     if not text then
         self:removeInjectedToc()
         self:saveStatus("file_error")
         return false
     end
+    self.ui.doc_settings:saveSetting("txtautotoc_last_encoding", encoding or "unknown")
 
     local parsed = Parser.detect(text)
     local entries = parsed.entries or {}

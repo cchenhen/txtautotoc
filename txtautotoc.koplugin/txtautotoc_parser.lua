@@ -1,5 +1,5 @@
 local Parser = {
-    DETECTOR_VERSION = 3,
+    DETECTOR_VERSION = 4,
 }
 
 local SPECIAL_TITLES = {

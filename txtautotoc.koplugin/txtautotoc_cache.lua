@@ -3,6 +3,7 @@ local Cache = {
     SIGNATURE_KEY = "txtautotoc_cache_signature",
     VERSION_KEY = "txtautotoc_cache_version",
     STATUS_KEY = "txtautotoc_last_status",
+    ENCODING_KEY = "txtautotoc_last_encoding",
 }
 
 function Cache.buildSignature(file_path, mtime, size, detector_version)
@@ -37,6 +38,7 @@ function Cache.clear(doc_settings)
     doc_settings:delSetting(Cache.SIGNATURE_KEY)
     doc_settings:delSetting(Cache.VERSION_KEY)
     doc_settings:delSetting(Cache.STATUS_KEY)
+    doc_settings:delSetting(Cache.ENCODING_KEY)
 end
 
 function Cache.shouldActivate(entries, min_hits)

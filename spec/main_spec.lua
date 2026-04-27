@@ -45,6 +45,7 @@ local function loadPlugin(deps)
         "logger",
         "libs/libkoreader-lfs",
         "txtautotoc_parser",
+        "txtautotoc_reader",
         "txtautotoc_mapper",
         "txtautotoc_cache",
     }) do
@@ -130,6 +131,23 @@ local function loadPlugin(deps)
     end
     package.preload["txtautotoc_parser"] = function()
         return deps.parser
+    end
+    package.preload["txtautotoc_reader"] = function()
+        if deps.reader then
+            return deps.reader
+        end
+
+        return {
+            readFile = function(path)
+                local handle = io.open(path, "rb")
+                if not handle then
+                    return nil
+                end
+                local content = handle:read("*a")
+                handle:close()
+                return content, "utf-8"
+            end,
+        }
     end
     package.preload["txtautotoc_mapper"] = function()
         return deps.mapper
@@ -247,6 +265,87 @@ do
     helpers.assertFalsy(parser_called, "should not scan when handmade toc is already enabled")
     helpers.assertEquals(doc_settings.values.txtautotoc_last_status, "handmade", "should record handmade override status")
     helpers.assertEquals(document.getToc()[1].title, "native", "should preserve the native toc getter")
+    os.remove(file)
+end
+
+do
+    local parser_text
+    local stored_entries
+    local file = makeTempTxt("spec-main-reader.txt", "raw file bytes")
+    local Plugin = loadPlugin({
+        file_attrs = {
+            [file] = { modification = 1700000000, size = 4096 },
+        },
+        reader_settings = {
+            readSetting = function(_, key, default)
+                if key == "txtautotoc_min_hits" then
+                    return 3
+                end
+                return default
+            end,
+        },
+        reader = {
+            readFile = function()
+                return "第1章\n第2章\n第3章\n", "gb18030"
+            end,
+        },
+        parser = {
+            DETECTOR_VERSION = 1,
+            detect = function(text)
+                parser_text = text
+                return {
+                    entries = {
+                        { title = "第1章", search_term = "第1章", depth = 1, line_number = 1 },
+                        { title = "第2章", search_term = "第2章", depth = 1, line_number = 2 },
+                        { title = "第3章", search_term = "第3章", depth = 1, line_number = 3 },
+                    },
+                    total_lines = 3,
+                }
+            end,
+        },
+        mapper = {
+            map = function(_, entries)
+                return entries
+            end,
+            mapBatched = function(_, entries)
+                for index, entry in ipairs(entries) do
+                    entry.xpointer = "/body/DocFragment[" .. index .. "]"
+                    entry.page = index
+                end
+                return entries
+            end,
+            mapFast = function(_, entries)
+                return entries
+            end,
+        },
+        cache = {
+            buildSignature = function() return "sig" end,
+            load = function() return nil end,
+            store = function(_, _, entries)
+                stored_entries = entries
+            end,
+            shouldActivate = function(entries, min_hits) return #entries >= min_hits end,
+            clear = function() end,
+        },
+    })
+
+    local doc_settings = makeDocSettings()
+    local document = {
+        is_txt = true,
+        file = file,
+        getToc = function()
+            return {}
+        end,
+    }
+    local plugin = Plugin:new({
+        ui = makeUI(doc_settings, document, false),
+    })
+
+    plugin:onReaderReady()
+
+    helpers.assertEquals(parser_text, "第1章\n第2章\n第3章\n", "plugin should parse text returned by reader compatibility layer")
+    helpers.assertEquals(doc_settings.values.txtautotoc_last_encoding, "gb18030", "plugin should record the detected reader encoding")
+    helpers.assertTableLength(stored_entries, 3, "reader-decoded text should still be cached after mapping")
     os.remove(file)
 end
 
