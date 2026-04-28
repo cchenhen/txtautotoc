@@ -1,5 +1,8 @@
 local Reader = {}
 
+local builtin_gb18030_loaded = false
+local builtin_gb18030
+
 local function shellQuote(value)
     return "'" .. tostring(value or ""):gsub("'", "'\\''") .. "'"
 end
@@ -103,6 +106,30 @@ local function convertWithIconv(path, from_encoding)
     return nil
 end
 
+local function getBuiltinGb18030()
+    if not builtin_gb18030_loaded then
+        builtin_gb18030_loaded = true
+        local ok, module = pcall(require, "txtautotoc_gb18030")
+        if ok then
+            builtin_gb18030 = module
+        end
+    end
+    return builtin_gb18030
+end
+
+local function convertWithBuiltinGb18030(raw)
+    local decoder = getBuiltinGb18030()
+    if not decoder then
+        return nil
+    end
+
+    local converted = decoder.decode(raw)
+    if converted ~= "" and Reader.isValidUtf8(converted) then
+        return converted
+    end
+    return nil
+end
+
 function Reader.readFile(path)
     local raw = readRaw(path)
     if not raw then
@@ -113,7 +140,9 @@ function Reader.readFile(path)
         return raw, "utf-8"
     end
 
-    local converted = convertWithIconv(path, "gb18030") or convertWithIconv(path, "gbk")
+    local converted = convertWithIconv(path, "gb18030")
+        or convertWithIconv(path, "gbk")
+        or convertWithBuiltinGb18030(raw)
     if converted then
         return converted, "gb18030"
     end
